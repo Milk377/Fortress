@@ -1,0 +1,150 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+using Photon.Pun;
+using Photon.Realtime;
+
+
+public class NetworkManager : MonoBehaviourPunCallbacks
+{
+
+    [Header("LoginPanel")]
+    public GameObject LoginPanel;
+    public InputField NickNameInput;
+
+    [Header("RoomPanel")]
+    public GameObject RoomPanel;
+
+    [Header("InGameUI")]
+    public GameObject InGameUIPanel;
+
+
+    public GameObject playerJoinID;
+    public GameObject startBtn;
+
+    // 초기 인원4 
+    public Text[] PlayerList;
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        Screen.SetResolution(1280, 720, false);
+        setPlayerListEmpty();
+        InGameUIPanel = GameObject.FindGameObjectWithTag("InGameUITag");
+
+    }
+
+    //초기 인원4 
+    void setPlayerListEmpty()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            PlayerList[i].text = "Empty";
+        }
+    }
+    public void Connect()
+    {
+        Debug.Log("[SYSTEM] : Conntect()");
+        PhotonNetwork.LocalPlayer.NickName = NickNameInput.text;
+        PhotonNetwork.ConnectUsingSettings();
+    }
+
+    public override void OnConnectedToMaster()
+    {
+        PhotonNetwork.JoinOrCreateRoom("Room", new RoomOptions { MaxPlayers = 4 }, null);
+    }
+
+
+    public override void OnJoinedRoom()
+    {
+        Debug.Log("[SYSTEM] : Join Room");
+        LoginSuccess();
+        PhotonNetwork.Instantiate("PlayerJoin", Vector3.zero, Quaternion.identity);
+
+    }
+
+    void LoginSuccess()
+    {
+        LoginPanel.SetActive(false);
+        RoomPanel.SetActive(true);
+
+        // ActorNumber 로 identifying 할 수 있다.
+        // 방장만 start 버튼이 활성화된다.
+        // 이를 바탕으로 플레이어들의 ready 기능도 구현이 가능하다.
+        // 굳이 RoomPanel 에 photonView 를 사용하지 않아도 된다.
+
+        if (PhotonNetwork.LocalPlayer.ActorNumber == 1)
+        {
+            startBtn.SetActive(true);
+        }
+        else
+        {
+            startBtn.SetActive(false);
+        }
+
+
+        // 로그인 성공시 방장의 View id 를 가지고 있는 플레이어를 찾아 그 플레이어의
+        // 시작 버튼을 활성화 시켜준다.
+
+        /*
+        foreach (GameObject playerJoinID in GameObject.FindGameObjectsWithTag("PlayerJoinID"))
+        {
+            
+            // 뷰 id 가 방장이고, 그 방장이 나 자신이라면
+            if (playerJoinID.GetComponent<PlayerJoin>().PV.IsMine)
+            {
+                startBtn.SetActive(true);
+            }
+            else
+            // 방장이 나 자신이 아니라면 
+            {
+                startBtn.SetActive(false);
+            }
+        }
+        */
+
+
+    }
+
+    public void GameStart()
+    {
+        // 동기화 
+        RoomPanel.GetComponent<RoomPanel>().PV.RPC("removeRoomPanel", RpcTarget.AllBuffered);
+        //InGameUIPanel.GetComponent<InGameUI>().PV.RPC("createIngameUI", RpcTarget.AllBuffered);
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        SetPlayerList();
+    }
+
+    void SetPlayerList()
+    {
+        foreach (GameObject playerJoinID in GameObject.FindGameObjectsWithTag("PlayerJoinID"))
+        {
+            // ViewId 에 따라서 플레이어를 구분하고 Lobby 위치를 달리 한다. 
+            if (playerJoinID.GetPhotonView().ViewID == 1001)
+            {
+                PlayerList[0].text = playerJoinID.GetComponent<PlayerJoin>().playerName;
+            }
+            else if (playerJoinID.GetPhotonView().ViewID == 2001)
+            {
+                PlayerList[1].text = playerJoinID.GetComponent<PlayerJoin>().playerName;
+            }
+            else if (playerJoinID.GetPhotonView().ViewID == 3001)
+            {
+                PlayerList[2].text = playerJoinID.GetComponent<PlayerJoin>().playerName;
+            }
+            else if (playerJoinID.GetPhotonView().ViewID == 4001)
+            {
+                PlayerList[3].text = playerJoinID.GetComponent<PlayerJoin>().playerName;
+            }
+        }
+    }
+
+
+}
